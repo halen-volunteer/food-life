@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>食生活 AI 顾问</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.4.38/dist/vue.global.prod.js"></script>
+    <style>
+        :root {
+            --bg: linear-gradient(135deg, #f4efe6 0%, #e6f0ec 45%, #dceaf4 100%);
+            --panel: rgba(255, 255, 255, 0.84);
+            --panel-dark: rgba(22, 28, 36, 0.88);
+            --text: #1f2937;
+            --text-dark: #f3f4f6;
+            --muted: #6b7280;
+            --brand: #0f766e;
+            --brand-strong: #115e59;
+            --accent: #c2410c;
+            --user: #0f766e;
+            --assistant: #ffffff;
+            --border: rgba(15, 118, 110, 0.12);
+            --shadow: 0 20px 50px rgba(15, 23, 42, 0.10);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        body.dark {
+            background: radial-gradient(circle at top, #223042 0%, #10161f 55%, #0b1118 100%);
+            color: var(--text-dark);
+        }
+
+        .app {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 22px;
+            background: rgba(255, 255, 255, 0.58);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(18px);
+        }
+
+        body.dark .header {
+            background: rgba(10, 15, 22, 0.72);
+            border-bottom-color: rgba(148, 163, 184, 0.12);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #0f766e, #14b8a6);
+            color: #fff;
+            display: grid;
+            place-items: center;
+            box-shadow: 0 16px 30px rgba(15, 118, 110, 0.28);
+        }
+
+        .brand-title {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .brand-subtitle {
+            margin-top: 4px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        body.dark .brand-subtitle {
+            color: #9ca3af;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+        }
+
+        .icon-btn {
+            width: 44px;
+            height: 44px;
+            border: none;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.82);
+            color: var(--brand);
+            cursor: pointer;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+        }
+
+        body.dark .icon-btn {
+            background: rgba(31, 41, 55, 0.92);
+            color: #f8fafc;
+        }
+
+        .main {
+            flex: 1;
+            width: min(960px, calc(100vw - 28px));
+            margin: 0 auto;
+            padding: 22px 0 140px;
+            overflow-y: auto;
+        }
+
+        .message-row {
+            display: flex;
+            margin-bottom: 18px;
+        }
+
+        .message-row.user {
+            justify-content: flex-end;
+        }
+
+        .message-card {
+            max-width: min(720px, 82vw);
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .message-row.user .message-card {
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, rgba(15, 118, 110, 0.18), rgba(194, 65, 12, 0.18));
+            color: var(--brand-strong);
+        }
+
+        .bubble {
+            padding: 16px 18px;
+            line-height: 1.75;
+            border-radius: 22px;
+            background: var(--assistant);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .message-row.user .bubble {
+            background: linear-gradient(135deg, #0f766e, #0d9488);
+            color: #fff;
+            border-color: transparent;
+        }
+
+        body.dark .bubble {
+            background: var(--panel-dark);
+            border-color: rgba(148, 163, 184, 0.16);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+        }
+
+        body.dark .message-row.user .bubble {
+            background: linear-gradient(135deg, #0f766e, #155e75);
+        }
+
+        .typing {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .typing span {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #94a3b8;
+            animation: pulse 1.2s infinite ease-in-out;
+        }
+
+        .typing span:nth-child(2) {
+            animation-delay: 0.15s;
+        }
+
+        .typing span:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+
+        .footer {
+            position: fixed;
+            left: 50%;
+            bottom: 18px;
+            transform: translateX(-50%);
+            width: min(960px, calc(100vw - 28px));
+            padding: 18px;
+            border-radius: 26px;
+            background: var(--panel);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(18px);
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.14);
+        }
+
+        body.dark .footer {
+            background: rgba(10, 15, 22, 0.82);
+            border-color: rgba(148, 163, 184, 0.14);
+        }
+
+        .composer {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 52px;
+            max-height: 220px;
+            resize: none;
+            border: none;
+            outline: none;
+            background: transparent;
+            font: inherit;
+            color: inherit;
+            line-height: 1.7;
+        }
+
+        textarea::placeholder {
+            color: #94a3b8;
+        }
+
+        .composer-box {
+            flex: 1;
+            border-radius: 20px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(15, 118, 110, 0.10);
+        }
+
+        body.dark .composer-box {
+            background: rgba(31, 41, 55, 0.92);
+            border-color: rgba(148, 163, 184, 0.12);
+        }
+
+        .send-btn {
+            width: 54px;
+            height: 54px;
+            border: none;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #c2410c, #ea580c);
+            color: #fff;
+            cursor: pointer;
+            box-shadow: 0 16px 30px rgba(194, 65, 12, 0.24);
+        }
+
+        .send-btn.stop {
+            background: linear-gradient(135deg, #991b1b, #dc2626);
+        }
+
+        .hint {
+            margin-top: 10px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        body.dark .hint {
+            color: #9ca3af;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translateY(0); opacity: 0.35; }
+            50% { transform: translateY(-2px); opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 16px;
+            }
+
+            .brand-title {
+                font-size: 18px;
+            }
+
+            .brand-subtitle {
+                display: none;
+            }
+
+            .main {
+                width: calc(100vw - 20px);
+                padding-top: 16px;
+                padding-bottom: 156px;
+            }
+
+            .footer {
+                width: calc(100vw - 20px);
+                bottom: 10px;
+                border-radius: 22px;
+                padding: 14px;
+            }
+
+            .message-card {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="app" class="app">
+    <header class="header">
+        <div class="brand">
+            <div class="brand-icon">
+                <i class="fa-solid fa-comments"></i>
+            </div>
+            <div>
+                <div class="brand-title">食生活 AI 顾问</div>
+                <div class="brand-subtitle">商家查询、优惠券咨询、到店预约一站式对话</div>
+            </div>
+        </div>
+        <div class="toolbar">
+            <button class="icon-btn" @click="startNewConversation" title="新建会话">
+                <i class="fa-solid fa-plus"></i>
+            </button>
+            <button class="icon-btn" @click="toggleDarkMode" title="切换主题">
+                <i :class="darkMode ? 'fa-solid fa-sun' : 'fa-solid fa-moon'"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="main" ref="chatContainer">
+        <div v-for="(message, index) in messages" :key="index" :class="['message-row', message.role]">
+            <div class="message-card">
+                <div class="avatar">
+                    <i :class="message.role === 'user' ? 'fa-solid fa-user' : 'fa-solid fa-robot'"></i>
+                </div>
+                <div class="bubble">
+                    <div v-if="message.isLoading" class="typing">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <div v-else>{{ message.content }}</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="composer">
+            <div class="composer-box">
+                <textarea
+                        ref="textarea"
+                        v-model="userInput"
+                        rows="1"
+                        placeholder="输入您想咨询的商家、优惠券或预约问题..."
+                        @input="adjustTextareaHeight"
+                        @keydown.enter.exact.prevent="sendMessage"
+                        @keydown.ctrl.enter.exact.prevent="sendMessage"
+                        @keydown.esc.exact.prevent="stopResponse"
+                ></textarea>
+            </div>
+            <button :class="['send-btn', isLoading ? 'stop' : '']"
+                    :disabled="!userInput.trim() && !isLoading"
+                    @click="isLoading ? stopResponse() : sendMessage()">
+                <i :class="isLoading ? 'fa-solid fa-stop' : 'fa-solid fa-paper-plane'"></i>
+            </button>
+        </div>
+        <div class="hint">回车发送，Ctrl + 回车也可发送，Esc 可中断当前响应。</div>
+    </footer>
+</div>
+
+<script>
+    const { createApp, ref, nextTick, onMounted, watch } = Vue;
+
+    createApp({
+        setup() {
+            const messages = ref([]);
+            const userInput = ref('');
+            const isLoading = ref(false);
+            const darkMode = ref(false);
+            const chatContainer = ref(null);
+            const textarea = ref(null);
+            const memoryId = ref(Date.now().toString());
+            let controller = null;
+
+            const applyTheme = () => {
+                document.body.classList.toggle('dark', darkMode.value);
+                localStorage.setItem('consultant-dark-mode', darkMode.value ? 'true' : 'false');
+            };
+
+            const adjustTextareaHeight = () => {
+                if (!textarea.value) {
+                    return;
+                }
+                textarea.value.style.height = 'auto';
+                textarea.value.style.height = `${Math.min(textarea.value.scrollHeight, 220)}px`;
+            };
+
+            const scrollToBottom = () => {
+                nextTick(() => {
+                    if (chatContainer.value) {
+                        chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+                    }
+                });
+            };
+
+            const pushWelcome = () => {
+                messages.value.push({
+                    role: 'assistant',
+                    content: '你好！我是食生活提供的 AI 顾问，可以帮你查询商家、优惠券信息，也可以协助预约到店消费。',
+                    isLoading: false
+                });
+            };
+
+            const startNewConversation = () => {
+                if (controller) {
+                    controller.abort();
+                    controller = null;
+                }
+                isLoading.value = false;
+                memoryId.value = Date.now().toString();
+                messages.value = [];
+                pushWelcome();
+                nextTick(() => {
+                    if (textarea.value) {
+                        textarea.value.focus();
+                        adjustTextareaHeight();
+                    }
+                });
+            };
+
+            const toggleDarkMode = () => {
+                darkMode.value = !darkMode.value;
+                applyTheme();
+            };
+
+            const stopResponse = () => {
+                if (controller) {
+                    controller.abort();
+                    controller = null;
+                }
+                isLoading.value = false;
+                const last = messages.value[messages.value.length - 1];
+                if (last && last.isLoading) {
+                    last.isLoading = false;
+                    last.content = last.content || '本次响应已中断。';
+                }
+            };
+
+            const sendMessage = async () => {
+                const content = userInput.value.trim();
+                if (!content || isLoading.value) {
+                    return;
+                }
+
+                messages.value.push({
+                    role: 'user',
+                    content,
+                    isLoading: false
+                });
+
+                const assistantMessage = {
+                    role: 'assistant',
+                    content: '',
+                    isLoading: true
+                };
+                messages.value.push(assistantMessage);
+
+                userInput.value = '';
+                adjustTextareaHeight();
+                scrollToBottom();
+
+                controller = new AbortController();
+                isLoading.value = true;
+
+                try {
+                    const response = await fetch(`/chat?memoryId=${encodeURIComponent(memoryId.value)}&message=${encodeURIComponent(content)}`, {
+                        signal: controller.signal
+                    });
+
+                    if (!response.ok || !response.body) {
+                        throw new Error(`请求失败，状态码：${response.status}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder('utf-8');
+                    let result = '';
+                    let buffer = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) {
+                            break;
+                        }
+                        buffer += decoder.decode(value, { stream: true });
+                        const blocks = buffer.split('\n\n');
+                        buffer = blocks.pop() || '';
+
+                        for (const block of blocks) {
+                            const lines = block.split('\n');
+                            for (const line of lines) {
+                                if (line.startsWith('data:')) {
+                                    result += line.slice(5).trimStart();
+                                    assistantMessage.content = result;
+                                    assistantMessage.isLoading = false;
+                                    scrollToBottom();
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        assistantMessage.content = assistantMessage.content || '本次响应已中断。';
+                    } else {
+                        assistantMessage.content = `抱歉，请求过程中出现错误：${error.message}`;
+                    }
+                    assistantMessage.isLoading = false;
+                } finally {
+                    isLoading.value = false;
+                    controller = null;
+                    assistantMessage.isLoading = false;
+                    scrollToBottom();
+                }
+            };
+
+            onMounted(() => {
+                darkMode.value = localStorage.getItem('consultant-dark-mode') === 'true';
+                applyTheme();
+                pushWelcome();
+                nextTick(() => {
+                    if (textarea.value) {
+                        textarea.value.focus();
+                        adjustTextareaHeight();
+                    }
+                });
+            });
+
+            watch(messages, scrollToBottom, { deep: true });
+
+            return {
+                messages,
+                userInput,
+                isLoading,
+                darkMode,
+                chatContainer,
+                textarea,
+                startNewConversation,
+                toggleDarkMode,
+                adjustTextareaHeight,
+                sendMessage,
+                stopResponse
+            };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
